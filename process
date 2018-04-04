@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import operator
+import os.path
 import sys
 from typing import Dict, Iterator, List, Optional, Tuple
 
@@ -283,7 +284,9 @@ class Entries:
 
 
 def report(date_range: DateRange, files: List[str], template_name: str) -> None:
-    loader = ibis.loaders.FileLoader('templates')
+    home_dir = os.path.dirname(os.path.realpath(__file__))
+    template_dir = os.path.join(home_dir, 'templates')
+    loader = ibis.loaders.FileLoader(template_dir)
     template = loader(template_name)
     output = template.render({
         'entries': Entries(date_range=date_range, files=files),
