@@ -1,0 +1,331 @@
+#!/usr/bin/env python3
+import argparse
+import datetime
+import operator
+import sys
+from typing import Dict, Iterator, List, Optional, Tuple
+
+import docutils.core
+import ibis
+import ibis.errors
+import ibis.filters
+import ibis.loaders
+import yaml
+
+
+@ibis.filters.register('dformat')
+def delta_formatter(delta: datetime.timedelta, delta_format: str='hh:mm') -> str:
+    if isinstance(delta, ibis.errors.Undefined):
+        return ''
+    if delta_format == "decimal":
+        return delta_to_decimal(delta)
+    elif delta_format == "hh:mm":
+        return delta_to_hhmm(delta)
+    else:
+        assert False
+
+
+@ibis.filters.register('rst')
+def rst_formatter(text: str) -> str:
+    if text is None:
+        return ""
+    return docutils.core.publish_parts(text, writer_name='html')['html_body']
+
+
+def parse_date(string: str) -> datetime.date:
+    yyyy, mm, dd = string.split("-", maxsplit=3)
+    return datetime.date(year=int(yyyy), month=int(mm), day=int(dd))
+
+
+def parse_time(string: str) -> datetime.time:
+    hh, mm = string.split(":", maxsplit=2)
+    return datetime.time(hour=int(hh), minute=int(mm))
+
+
+def parse_datetime(string: str) -> datetime.datetime:
+    date_str, time_str = string.split(" ", maxsplit=2)
+    date = parse_date(date_str)
+    time = parse_time(time_str)
+    return datetime.datetime.combine(date, time)
+
+
+def parse_delta(string: str) -> datetime.timedelta:
+    hh, mm = string.split(":", maxsplit=2)
+    return datetime.timedelta(hours=int(hh), minutes=int(mm))
+
+
+def delta_to_decimal(delta: datetime.timedelta) -> str:
+    days = delta.days
+    return str(round(days * 24 + delta.seconds / 3600, 1))
+
+
+def delta_to_hhmm(delta: datetime.timedelta) -> str:
+    days = delta.days
+    negative = "+"
+    if days < 0:
+        delta = -delta
+        days = delta.days
+        negative = "-"
+    value, seconds = divmod(delta.seconds, 60)
+    hours, minutes = divmod(value, 60)
+
+    hh = hours + days*24
+    mm = minutes
+    return "%s%02d:%02d" % (negative, hh, mm)
+
+
+def delta_to_format(delta: datetime.timedelta, delta_format: str) -> str:
+    if delta_format == "decimal":
+        return delta_to_decimal(delta)
+    elif delta_format == "hh:mm":
+        return delta_to_hhmm(delta)
+    else:
+        assert False
+
+
+DateRange = Tuple[Optional[datetime.date], Optional[datetime.date]]
+
+
+def get_date_range(date: datetime.date, one: bool, two: bool, month: bool) -> DateRange:
+    current_date = datetime.datetime.combine(date, datetime.time())
+
+    start_range: Optional[datetime.datetime] = None
+    stop_range: Optional[datetime.datetime] = None
+    if one:
+        start_range = (
+            current_date
+            - datetime.timedelta(days=current_date.weekday())
+        )
+        stop_range = (
+            current_date
+            - datetime.timedelta(days=current_date.weekday())
+            + datetime.timedelta(days=6)
+        )
+    elif two:
+        start_range = (
+            current_date
+            - datetime.timedelta(days=current_date.weekday())
+            - datetime.timedelta(days=7)
+        )
+        stop_range = (
+            current_date
+            - datetime.timedelta(days=current_date.weekday())
+            + datetime.timedelta(days=6)
+        )
+    elif month:
+        start_range = current_date.replace(day=1)
+        stop_range = (
+            current_date.replace(month=current_date.month+1, day=1)
+            - datetime.timedelta(days=1)
+        )
+
+    start_date: Optional[datetime.date] = None
+    if start_range is not None:
+        start_date = start_range.date()
+
+    stop_date: Optional[datetime.date] = None
+    if stop_range is not None:
+        stop_date = stop_range.date()
+
+    return (start_date, stop_date)
+
+
+def round_timedelta(td: datetime.timedelta, period: datetime.timedelta) -> datetime.timedelta:
+    """
+    Rounds the given timedelta by the given timedelta period
+    :param td: `timedelta` to round
+    :param period: `timedelta` period to round by.
+    """
+    period_seconds = period.total_seconds()
+    half_period_seconds = period_seconds / 2
+    remainder = td.total_seconds() % period_seconds
+    if remainder >= half_period_seconds:
+        return datetime.timedelta(
+            seconds=td.total_seconds() + (period_seconds - remainder))
+    else:
+        return datetime.timedelta(
+            seconds=td.total_seconds() - remainder)
+
+
+class Entry:
+    def __init__(
+            self, *, date: datetime.date, title: str, project: str, text: str,
+            start_time: datetime.time, stop_time: datetime.time,
+            break_delta: datetime.timedelta, t_raw_delta: datetime.timedelta,
+            round_delta: datetime.timedelta, total_delta: datetime.timedelta) -> None:
+        self.date = date
+        self.title = title
+        self.project = project
+        self.text = text
+        self.start_time = start_time
+        self.stop_time = stop_time
+        self.break_delta = break_delta
+        self.t_raw_delta = t_raw_delta
+        self.round_delta = round_delta
+        self.total_delta = total_delta
+
+
+class Day:
+    def __init__(
+            self, *, date: datetime.date,
+            total_delta: datetime.timedelta) -> None:
+        self.date = date
+        self.total_delta = total_delta
+
+
+class Entries:
+    def __init__(self, *, date_range: DateRange, files: List[str]) -> None:
+        self._date_range = date_range
+        self._files = files
+        self._dates: List[datetime.date] = []
+        self.t_raw_delta = datetime.timedelta()
+        self.total_delta = datetime.timedelta()
+        self._entries: Dict[datetime.date, List[Entry]] = {}
+        self._read()
+
+    def _read(self) -> None:
+        current_datetime = datetime.datetime.now()
+        current_date = current_datetime.date()
+        start_range = self._date_range[0]
+        stop_range = self._date_range[1]
+
+        self.start_date = start_range
+        self.stop_date = stop_range
+
+        for filename in self._files:
+            with open(filename) as stream:
+                root = yaml.safe_load(stream)
+
+            project = root["project"]
+            period = parse_delta(root["period"])
+
+            for date in root["dates"].keys():
+                entries = root["dates"][date]
+                if start_range and date < start_range:
+                    continue
+                if stop_range and date > stop_range:
+                    continue
+                for entry in entries:
+                    entry_start_t = parse_time(entry['start'])
+                    if 'stop' not in entry and date == current_date:
+                        entry_stop_t = current_datetime.time()
+                    else:
+                        entry_stop_t = parse_time(entry['stop'])
+                    if 'break' in entry:
+                        entry_break = parse_delta(entry['break'])
+                    else:
+                        entry_break = datetime.timedelta()
+
+                    entry_start_dt = datetime.datetime.combine(date, entry_start_t)
+                    entry_stop_dt = datetime.datetime.combine(date, entry_stop_t)
+
+                    assert entry_stop_dt > entry_start_dt
+                    if entry.get('future', False):
+                        assert entry_start_dt >= current_datetime
+                    else:
+                        assert entry_start_dt < current_datetime
+                        assert entry_stop_dt < current_datetime or date == current_date
+
+                    entry_t_raw_delta = entry_stop_dt - entry_start_dt - entry_break
+                    entry_total_delta = round_timedelta(entry_t_raw_delta, period)
+                    entry_round_delta = entry_total_delta - entry_t_raw_delta
+
+                    self.t_raw_delta += entry_t_raw_delta
+                    self.total_delta += entry_total_delta
+                    self.round_delta = self.total_delta - self.t_raw_delta
+
+                    entry = Entry(
+                        date=date,
+                        title=entry['title'],
+                        project=project,
+                        text=entry.get('text'),
+                        start_time=entry_start_t,
+                        stop_time=entry_stop_t,
+                        break_delta=entry_break,
+                        t_raw_delta=entry_t_raw_delta,
+                        round_delta=entry_round_delta,
+                        total_delta=entry_total_delta,
+                    )
+                    if date not in self._entries:
+                        self._entries[date] = []
+                    self._entries[date].append(entry)
+
+        dates = list(self._entries.keys())
+        dates.sort()
+        self._dates = dates
+
+        for date in self._dates:
+            self._entries[date].sort(key=operator.attrgetter('start_time'))
+
+    def all(self) -> Iterator[Entry]:
+        for date in self._dates:
+            for entry in self._entries[date]:
+                yield entry
+
+    def daily(self) -> Iterator[Day]:
+        days: Dict[datetime.date, Dict[str, datetime.timedelta]] = {}
+
+        for date in self._dates:
+            for entry in self._entries[date]:
+                if date not in days:
+                    days[date] = {
+                        'total_delta': datetime.timedelta()
+                    }
+                days[date]['total_delta'] += entry.total_delta
+
+        dates = list(days.keys())
+        dates.sort()
+        for date in dates:
+            yield Day(
+                date=date,
+                total_delta=days[date]['total_delta']
+            )
+
+
+def report(date_range: DateRange, files: List[str], template_name: str) -> None:
+    loader = ibis.loaders.FileLoader('templates')
+    template = loader(template_name)
+    output = template.render({
+        'entries': Entries(date_range=date_range, files=files),
+    })
+    sys.stdout.write(output)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description='Process time sheet.')
+    parser.add_argument("-d", "--date", dest="date")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-1", "--1week", dest="one", action="store_true")
+    group.add_argument("-2", "--2week", dest="two", action="store_true")
+    group.add_argument("-m", "--month", dest="month", action="store_true")
+
+    subparsers = parser.add_subparsers(dest='subparser')
+
+    parser_a = subparsers.add_parser(
+        'report', help="Generate complete report.")
+    parser_a.add_argument("-t", "--template", dest="template_name", default="report.txt")
+    parser_a.add_argument('files', nargs='+', help='Files to load.')
+
+    kwargs = vars(parser.parse_args())
+
+    d_string = kwargs.pop('date', None)
+    if d_string is None:
+        date = datetime.date.today()
+    else:
+        date = parse_date(d_string)
+
+    date_range = get_date_range(
+        date=date,
+        one=kwargs.pop('one', None),
+        two=kwargs.pop('two', None),
+        month=kwargs.pop('month', None),
+    )
+    kwargs['date_range'] = date_range
+    task = kwargs.pop('subparser', None)
+    if task is not None:
+        globals()[task](**kwargs)
+
+
+if __name__ == "__main__":
+    main()

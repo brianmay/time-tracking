@@ -1,0 +1,5 @@
+<h1>Text report {{entries.start_date}} to {{entries.stop_date}}</h1>
+{% for entry in entries.all %}
+    <h2>{{ entry.title }}</h2>
+    {{ entry.text | rst }}
+{% endfor %}

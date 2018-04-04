@@ -1,0 +1,39 @@
+<h1>Report {{entries.start_date}} to {{entries.stop_date}}</h1>
+<table>
+    <tr>
+        <th>Date</th>
+        <th>Day</th>
+        <th>Start</th>
+        <th>Stop</th>
+        <th>Break</th>
+        <th>Round</th>
+        <th>Total</th>
+        <th>Project</th>
+        <th>Description</th>
+    </tr>
+    {% for entry in entries.all %}
+        <tr>
+            <td>{{ entry.date }}</td>
+            <td>{{ entry.date|dtformat('%A') }}</td>
+            <td>{{ entry.start_time|dtformat('%H:%M') }}</td>
+            <td>{{ entry.stop_time|dtformat('%H:%M') }}</td>
+            <td>{{ entry.break_delta|dformat('hh:mm') }}</td>
+            <td>{{ entry.round_delta|dformat('hh:mm') }}</td>
+            <td>{{ entry.total_delta|dformat('hh:mm') }}</td>
+            <td>{{ entry.project }}</td>
+            <td>{{ entry.title }}</td>
+        </tr>
+    {% endfor %}
+    <tr>
+        <td>TOTAL</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>{{ entries.round_delta|dformat('hh:mm') }}</td>
+        <td>{{ entries.total_delta|dformat('hh:mm') }}</td>
+        <td></td>
+        <td></td>
+    </tr>
+</table>
+
