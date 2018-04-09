@@ -33,6 +33,33 @@ def rst_formatter(text: str) -> str:
     return docutils.core.publish_parts(text, writer_name='html')['html_body']
 
 
+@ibis.nodes.register('rst_l1_header', 'end_rst_l1_header')
+class RstL1Header(ibis.nodes.Node):
+    def render(self, context):
+        content = ''.join(child.render(context) for child in self)
+        content = content.replace('\n', '')
+        result = [
+            "",
+            "="*len(content),
+            content,
+            "="*len(content),
+        ]
+        return "\n".join(result)
+
+
+@ibis.nodes.register('rst_l2_header', 'end_rst_l2_header')
+class RstL2Header(ibis.nodes.Node):
+    def render(self, context):
+        content = ''.join(child.render(context) for child in self)
+        content = content.replace('\n', '')
+        result = [
+            "",
+            content,
+            "-"*len(content),
+        ]
+        return "\n".join(result)
+
+
 def parse_date(string: str) -> datetime.date:
     yyyy, mm, dd = string.split("-", maxsplit=3)
     return datetime.date(year=int(yyyy), month=int(mm), day=int(dd))
