@@ -253,10 +253,13 @@ class Entries:
 
                     assert entry_stop_dt > entry_start_dt
                     if entry.get('future', False):
-                        assert entry_start_dt >= current_datetime
+                        if entry_start_dt < current_datetime:
+                            raise RuntimeError('%s: Future entry starts in the past' % filename)
                     else:
-                        assert entry_start_dt < current_datetime
-                        assert entry_stop_dt < current_datetime or date == current_date
+                        if entry_start_dt > current_datetime:
+                            raise RuntimeError('%s: Entry starts in the future' % filename)
+                        if entry_stop_dt > current_datetime and date != current_date:
+                            raise RuntimeError('%s: Entry stops in the future' % filename)
 
                     entry_t_raw_delta = entry_stop_dt - entry_start_dt - entry_break
                     entry_total_delta = round_timedelta(entry_t_raw_delta, period)
