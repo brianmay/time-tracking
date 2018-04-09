@@ -300,7 +300,8 @@ class Entries:
             for entry in self._entries[date]:
                 if entry.title not in report:
                     report[entry.title] = ""
-                report[entry.title] += entry.text
+                if entry.text is not None:
+                    report[entry.title] += entry.text
 
         titles = list(report.keys())
         titles.sort()
