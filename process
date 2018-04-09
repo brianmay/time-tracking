@@ -39,7 +39,6 @@ class RstL1Header(ibis.nodes.Node):
         content = ''.join(child.render(context) for child in self)
         content = content.replace('\n', '')
         result = [
-            "",
             "="*len(content),
             content,
             "="*len(content),
@@ -53,7 +52,6 @@ class RstL2Header(ibis.nodes.Node):
         content = ''.join(child.render(context) for child in self)
         content = content.replace('\n', '')
         result = [
-            "",
             content,
             "-"*len(content),
         ]
