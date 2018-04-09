@@ -175,7 +175,7 @@ class Day:
 
 
 class TextEntry:
-    def __init__(self, *, title, text) -> None:
+    def __init__(self, *, title: str, text: str) -> None:
         self.title = title
         self.text = text
 
@@ -269,21 +269,18 @@ class Entries:
             for entry in self._entries[date]:
                 yield entry
 
-    def text_report(self) -> Iterator[Entry]:
-        prev_title = None
-        prev_text = ""
+    def text_report(self) -> Iterator[TextEntry]:
+        report: Dict[str, str] = {}
         for date in self._dates:
             for entry in self._entries[date]:
-                if prev_title is not None and prev_title != entry.title:
-                    yield TextEntry(title=prev_title, text=prev_text)
-                    prev_title = None
-                    prev_text = ""
-                if prev_title is None:
-                    prev_title = entry.title
-                if entry.text is not None:
-                    prev_text += entry.text
-        if prev_title is not None:
-            yield TextEntry(title=prev_title, text=prev_text)
+                if entry.title not in report:
+                    report[entry.title] = ""
+                report[entry.title] += entry.text
+
+        titles = list(report.keys())
+        titles.sort()
+        for title in titles:
+            yield TextEntry(title=title, text=report[title])
 
     def daily(self) -> Iterator[Day]:
         days: Dict[datetime.date, Dict[str, datetime.timedelta]] = {}
