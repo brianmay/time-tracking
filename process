@@ -11,6 +11,7 @@ import ibis
 import ibis.errors
 import ibis.filters
 import ibis.loaders
+import ibis.nodes
 import yaml
 
 
@@ -35,9 +36,8 @@ def rst_formatter(text: str) -> str:
 
 @ibis.nodes.register('rst_l1_header', 'end_rst_l1_header')
 class RstL1Header(ibis.nodes.Node):
-    def render(self, context):
-        content = ''.join(child.render(context) for child in self)
-        content = content.replace('\n', '')
+    def render(self, context: Dict[str, str]) -> str:
+        content = self.render(context).replace('\n', '')
         result = [
             "="*len(content),
             content,
@@ -48,9 +48,8 @@ class RstL1Header(ibis.nodes.Node):
 
 @ibis.nodes.register('rst_l2_header', 'end_rst_l2_header')
 class RstL2Header(ibis.nodes.Node):
-    def render(self, context):
-        content = ''.join(child.render(context) for child in self)
-        content = content.replace('\n', '')
+    def render(self, context: Dict[str, str]) -> str:
+        content = self.render(context).replace('\n', '')
         result = [
             content,
             "-"*len(content),
