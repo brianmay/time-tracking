@@ -23,6 +23,8 @@ def delta_formatter(delta: datetime.timedelta, delta_format: str='hh:mm') -> str
         return delta_to_decimal(delta)
     elif delta_format == "hh:mm":
         return delta_to_hhmm(delta)
+    elif delta_format == "text":
+        return delta_to_text(delta)
     else:
         assert False
 
@@ -108,6 +110,34 @@ def delta_to_hhmm(delta: datetime.timedelta) -> str:
     hh = hours + days*24
     mm = minutes
     return "%s%02d:%02d" % (negative, hh, mm)
+
+
+def delta_to_text(delta: datetime.timedelta) -> str:
+    days = delta.days
+    negative = ""
+    if days < 0:
+        delta = -delta
+        days = delta.days
+        negative = "-"
+    value, seconds = divmod(delta.seconds, 60)
+    hours, minutes = divmod(value, 60)
+
+    hh = hours + days*24
+    mm = minutes
+
+    result = []
+
+    if hh == 1:
+        result.append("%d hour" % hh)
+    elif hh > 1:
+        result.append("%d hours" % hh)
+
+    if mm == 1:
+        result.append("%d minute" % mm)
+    if mm > 0:
+        result.append("%d minutes" % mm)
+
+    return negative + " and ".join(result)
 
 
 def delta_to_format(delta: datetime.timedelta, delta_format: str) -> str:
