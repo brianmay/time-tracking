@@ -5,7 +5,7 @@
         <th>Day</th>
         <th>Total</th>
     </tr>
-    {% for entry in entries.daily %}
+    {% for entry in entries.all.daily_report %}
         <tr>
             <td>{{ entry.date }}</td>
             <td>{{ entry.date|dtformat('%A') }}</td>
@@ -15,7 +15,7 @@
     <tr>
         <td>TOTAL</td>
         <td></td>
-        <td>{{ entries.total_delta|dformat('hh:mm') }}</td>
+        <td>{{ entries.all.total_delta|dformat('hh:mm') }}</td>
     </tr>
 </table>
 
