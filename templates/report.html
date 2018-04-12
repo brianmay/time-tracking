@@ -1,4 +1,4 @@
-<h1>Report {{entries.start_date}} to {{entries.stop_date}}</h1>
+<h1>Report {{{entries.start_date}}} to {{{entries.stop_date}}}</h1>
 <table>
     <tr>
         <th>Date</th>
@@ -13,15 +13,15 @@
     </tr>
     {% for entry in entries.all.sequential %}
         <tr>
-            <td>{{ entry.date }}</td>
-            <td>{{ entry.date|dtformat('%A') }}</td>
-            <td>{{ entry.start_time|dtformat('%H:%M') }}</td>
-            <td>{{ entry.stop_time|dtformat('%H:%M') }}</td>
-            <td>{{ entry.break_delta|dformat('hh:mm') }}</td>
-            <td>{{ entry.round_delta|dformat('hh:mm') }}</td>
-            <td>{{ entry.total_delta|dformat('hh:mm') }}</td>
-            <td>{{ entry.project.name }}</td>
-            <td>{{ entry.title }}</td>
+            <td>{{{ entry.date }}}</td>
+            <td>{{{ entry.date|dtformat('%A') }}}</td>
+            <td>{{{ entry.start_time|dtformat('%H:%M') }}}</td>
+            <td>{{{ entry.stop_time|dtformat('%H:%M') }}}</td>
+            <td>{{{ entry.break_delta|dformat('hh:mm') }}}</td>
+            <td>{{{ entry.round_delta|dformat('hh:mm') }}}</td>
+            <td>{{{ entry.total_delta|dformat('hh:mm') }}}</td>
+            <td>{{{ entry.project.name }}}</td>
+            <td>{{{ entry.title }}}</td>
         </tr>
     {% endfor %}
     <tr>
@@ -30,8 +30,8 @@
         <td></td>
         <td></td>
         <td></td>
-        <td>{{ entries.all.round_delta|dformat('hh:mm') }}</td>
-        <td>{{ entries.all.total_delta|dformat('hh:mm') }}</td>
+        <td>{{{ entries.all.round_delta|dformat('hh:mm') }}}</td>
+        <td>{{{ entries.all.total_delta|dformat('hh:mm') }}}</td>
         <td></td>
         <td></td>
     </tr>
