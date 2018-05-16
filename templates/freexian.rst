@@ -17,7 +17,7 @@ This time period I used {{ entries.all.total_delta|dformat('text') }}.
 {% end_rst_l2_header %}
 For the project {{ project.name }}, I used {{ project.total_delta|dformat('text') }} in the following tasks:
 
-{% for entry in project.aggregated_text_report %}* {{ entry.title }} ({{ entry.total_delta|dformat('text') }})
+{% for entry in project.aggregated_text_report %}* {{ entry.title }}
 {% endfor %}
 {% for entry in project.aggregated_text_report %}{% if entry.text %}{% rst_l3_header %}
 {{ entry.title }}
