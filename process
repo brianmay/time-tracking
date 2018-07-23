@@ -372,6 +372,7 @@ class Entries:
 
             self._projects.append(project)
 
+            previous_stop_dt = None
             if True:
                 for entry in root["entries"]:
                     date = entry['date']
@@ -401,6 +402,12 @@ class Entries:
                             raise RuntimeError('%s: Entry starts in the future' % filename)
                         if entry_stop_dt > current_datetime and date != current_date:
                             raise RuntimeError('%s: Entry stops in the future' % filename)
+
+                    if previous_stop_dt is not None:
+                        if entry_start_dt < previous_stop_dt:
+                            raise RuntimeError('%s: Entry starts before previous entry stops' % filename)
+
+                    previous_stop_dt = entry_stop_dt
 
                     entry_t_raw_delta = entry_stop_dt - entry_start_dt - entry_break
                     entry_total_delta = round_timedelta(entry_t_raw_delta, period)
