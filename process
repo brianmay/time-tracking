@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import calendar
 import datetime
 import operator
 import os.path
@@ -152,11 +153,23 @@ def delta_to_format(delta: datetime.timedelta, delta_format: str) -> str:
 DateRange = Tuple[Optional[datetime.date], Optional[datetime.date]]
 
 
+def add_months(date: datetime.date, months: int) -> datetime.date:
+    month = date.month - 1 + months
+    year = date.year + month // 12
+    month = month % 12 + 1
+    day = min(date.day, calendar.monthrange(year, month)[1])
+    return datetime.date(year, month,day)
+
+
 def get_date_range(date: datetime.date, one: bool, two: bool, month: bool) -> DateRange:
     current_date = datetime.datetime.combine(date, datetime.time())
 
+    start_date: Optional[datetime.date] = None
+    stop_date: Optional[datetime.date] = None
+
     start_range: Optional[datetime.datetime] = None
     stop_range: Optional[datetime.datetime] = None
+
     if one:
         start_range = (
             current_date
@@ -167,6 +180,8 @@ def get_date_range(date: datetime.date, one: bool, two: bool, month: bool) -> Da
             - datetime.timedelta(days=current_date.weekday())
             + datetime.timedelta(days=6)
         )
+        start_date = start_range.date()
+        stop_date = stop_range.date()
     elif two:
         start_range = (
             current_date
@@ -178,20 +193,15 @@ def get_date_range(date: datetime.date, one: bool, two: bool, month: bool) -> Da
             - datetime.timedelta(days=current_date.weekday())
             + datetime.timedelta(days=6)
         )
+        start_date = start_range.date()
+        stop_date = stop_range.date()
     elif month:
         start_range = current_date.replace(day=1)
-        stop_range = (
-            current_date.replace(month=current_date.month+1, day=1)
+        start_date = start_range.date()
+        stop_date = (
+            add_months(current_date, 1).replace(day=1)
             - datetime.timedelta(days=1)
         )
-
-    start_date: Optional[datetime.date] = None
-    if start_range is not None:
-        start_date = start_range.date()
-
-    stop_date: Optional[datetime.date] = None
-    if stop_range is not None:
-        stop_date = stop_range.date()
 
     return (start_date, stop_date)
 
