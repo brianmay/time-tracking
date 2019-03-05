@@ -420,10 +420,7 @@ class Entries:
             if True:
                 for entry in root["entries"]:
                     date = entry['date']
-                    if start_range and date < start_range:
-                        continue
-                    if stop_range and date > stop_range:
-                        continue
+
                     entry_start_t = parse_time(entry['start'])
                     if 'stop' not in entry and date == current_date:
                         entry_stop_t = current_datetime.time()
@@ -452,6 +449,11 @@ class Entries:
                             raise RuntimeError(
                                 '%s: Entry %s starts before previous entry stops %s'
                                 % (filename, entry_start_dt, previous_stop_dt))
+
+                    if start_range and date < start_range:
+                        continue
+                    if stop_range and date > stop_range:
+                        continue
 
                     previous_stop_dt = entry_stop_dt
 
