@@ -307,12 +307,12 @@ class EntryList:
                 yield entry
 
     def project_report(self) -> Iterator[AggregatedProject]:
-        days: Dict[datetime.date, Dict[str, datetime.timedelta]] = {}
+        days: Dict[datetime.date, Dict[Project, Dict[str, datetime.timedelta]]] = {}
 
         for date in self._dates:
             for entry in self._entries[date]:
                 if date not in days:
-                    days[date] = { }
+                    days[date] = {}
                 project = entry.project
                 if project not in days[date]:
                     days[date][project] = {
@@ -449,7 +449,9 @@ class Entries:
 
                     if previous_stop_dt is not None:
                         if entry_start_dt < previous_stop_dt:
-                            raise RuntimeError('%s: Entry %s starts before previous entry stops %s' % (filename, entry_start_dt, previous_stop_dt))
+                            raise RuntimeError(
+                                '%s: Entry %s starts before previous entry stops %s'
+                                % (filename, entry_start_dt, previous_stop_dt))
 
                     previous_stop_dt = entry_stop_dt
 
