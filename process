@@ -440,12 +440,12 @@ class Entries:
                     assert entry_stop_dt > entry_start_dt
                     if entry.get('future', False):
                         if entry_start_dt < current_datetime:
-                            raise RuntimeError('%s: Future entry starts in the past' % filename)
+                            raise RuntimeError('%s: Future entry %s starts in the past' % (filename, entry_start_dt))
                     else:
                         if entry_start_dt > current_datetime:
-                            raise RuntimeError('%s: Entry starts in the future' % filename)
+                            raise RuntimeError('%s: Entry %s starts in the future' % (filename, entry_start_dt))
                         if entry_stop_dt > current_datetime and date != current_date:
-                            raise RuntimeError('%s: Entry stops in the future' % filename)
+                            raise RuntimeError('%s: Entry %s stops in the future' % (filename, entry_start_dt))
 
                     if previous_stop_dt is not None:
                         if entry_start_dt < previous_stop_dt:
