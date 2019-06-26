@@ -434,7 +434,7 @@ class Entries:
                     entry_start_dt = datetime.datetime.combine(date, entry_start_t)
                     entry_stop_dt = datetime.datetime.combine(date, entry_stop_t)
 
-                    assert entry_stop_dt > entry_start_dt
+                    assert entry_stop_dt >= entry_start_dt
                     if entry.get('future', False):
                         if entry_start_dt < current_datetime:
                             raise RuntimeError('%s: Future entry %s starts in the past' % (filename, entry_start_dt))
@@ -464,6 +464,11 @@ class Entries:
                     entry_t_raw_delta = entry_stop_dt - entry_start_dt - entry_break
                     entry_total_delta = round_timedelta(entry_t_raw_delta, period)
                     entry_round_delta = entry_total_delta - entry_t_raw_delta
+
+                    if entry_t_raw_delta < datetime.timedelta(0):
+                        raise RuntimeError(
+                            '%s: Entry %s  has negative delta'
+                            % (filename, entry_start_dt))
 
                     entry = Entry(
                         project=project,
