@@ -5,7 +5,8 @@ import datetime
 import operator
 import os.path
 import sys
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+import itertools
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeVar, Iterable
 
 import docutils.core
 import ibis
@@ -14,6 +15,18 @@ import ibis.filters
 import ibis.loaders
 import ibis.nodes
 import yaml
+
+
+T = TypeVar('T')
+
+
+def previous_and_next(
+    some_iterable: Iterable[T]
+) -> Iterable[Tuple[Optional[T], Optional[T], Optional[T]]]:
+    prevs, items, nexts = itertools.tee(some_iterable, 3)
+    prevs = itertools.chain([None], prevs)
+    nexts = itertools.chain(itertools.islice(nexts, 1, None), [None])
+    return zip(prevs, items, nexts)
 
 
 @ibis.filters.register('dformat')
@@ -417,63 +430,89 @@ class Entries:
             self._projects.append(project)
 
             previous_stop_dt = None
-            if True:
-                for entry in root["entries"]:
+            for prev_entry, entry, next_entry in previous_and_next(root["entries"]):
+                if 'date' in entry:
                     date = entry['date']
+                else:
+                    date = date
 
-                    entry_start_t = parse_time(entry['start'])
-                    if 'stop' not in entry and date == current_date:
-                        entry_stop_t = current_datetime.time()
-                    else:
-                        entry_stop_t = parse_time(entry['stop'])
-                    if 'break' in entry:
-                        entry_break = parse_delta(entry['break'])
-                    else:
-                        entry_break = datetime.timedelta()
+                if 'title' in entry:
+                    title = entry['title']
+                else:
+                    title = title
 
-                    entry_start_dt = datetime.datetime.combine(date, entry_start_t)
-                    entry_stop_dt = datetime.datetime.combine(date, entry_stop_t)
+                if next_entry is None:
+                    next_entry_same_day = False
+                elif 'date' in next_entry and next_entry['date'] != date:
+                    next_entry_same_day = False
+                else:
+                    next_entry_same_day = True
 
-                    assert entry_stop_dt >= entry_start_dt
-                    if entry.get('future', False):
-                        if entry_start_dt < current_datetime:
-                            raise RuntimeError('%s: Future entry %s starts in the past' % (filename, entry_start_dt))
-                    else:
-                        if entry_start_dt > current_datetime:
-                            raise RuntimeError('%s: Entry %s starts in the future' % (filename, entry_start_dt))
-                        if entry_stop_dt > current_datetime and date != current_date:
-                            raise RuntimeError('%s: Entry %s stops in the future' % (filename, entry_start_dt))
-
-                    if previous_stop_dt is not None:
-                        if entry_start_dt < previous_stop_dt:
-                            raise RuntimeError(
-                                '%s: Entry %s starts before previous entry stops %s'
-                                % (filename, entry_start_dt, previous_stop_dt))
-
-                    bill_date = date
-                    if 'bill_date' in entry:
-                        bill_date = entry['bill_date']
-
-                    if start_range and bill_date < start_range:
+                if 'start' not in entry:
+                    if 'stop' in entry and not next_entry_same_day:
                         continue
-                    if stop_range and bill_date > stop_range:
-                        continue
+                    raise RuntimeError('%s: Cannot get start time for %s' % (filename, entry))
+                entry_start_t = parse_time(entry['start'])
 
-                    previous_stop_dt = entry_stop_dt
+                if 'stop' not in entry:
+                    if next_entry_same_day and 'start' in next_entry:
+                        entry_stop_t = parse_time(next_entry['start'])
+                    elif next_entry_same_day and 'stop' in next_entry:
+                        entry_stop_t = parse_time(next_entry['stop'])
+                    else:
+                        raise RuntimeError('%s: Cannot get stop time for %s' % (filename, entry))
+                else:
+                    entry_stop_t = parse_time(entry['stop'])
 
-                    entry_t_raw_delta = entry_stop_dt - entry_start_dt - entry_break
-                    entry_total_delta = round_timedelta(entry_t_raw_delta, period)
-                    entry_round_delta = entry_total_delta - entry_t_raw_delta
+                if 'break' in entry:
+                    entry_break = parse_delta(entry['break'])
+                else:
+                    entry_break = datetime.timedelta()
 
-                    if entry_t_raw_delta < datetime.timedelta(0):
+                entry_start_dt = datetime.datetime.combine(date, entry_start_t)
+                entry_stop_dt = datetime.datetime.combine(date, entry_stop_t)
+
+                assert entry_stop_dt >= entry_start_dt
+                if entry.get('future', False):
+                    if entry_start_dt < current_datetime:
+                        raise RuntimeError('%s: Future entry %s starts in the past' % (filename, entry_start_dt))
+                else:
+                    if entry_start_dt > current_datetime:
+                        raise RuntimeError('%s: Entry %s starts in the future' % (filename, entry_start_dt))
+                    if entry_stop_dt > current_datetime and date != current_date:
+                        raise RuntimeError('%s: Entry %s stops in the future' % (filename, entry_start_dt))
+
+                if previous_stop_dt is not None:
+                    if entry_start_dt < previous_stop_dt:
                         raise RuntimeError(
-                            '%s: Entry %s  has negative delta'
-                            % (filename, entry_start_dt))
+                            '%s: Entry %s starts before previous entry stops %s'
+                            % (filename, entry_start_dt, previous_stop_dt))
 
+                bill_date = date
+                if 'bill_date' in entry:
+                    bill_date = entry['bill_date']
+
+                if start_range and bill_date < start_range:
+                    continue
+                if stop_range and bill_date > stop_range:
+                    continue
+
+                previous_stop_dt = entry_stop_dt
+
+                entry_t_raw_delta = entry_stop_dt - entry_start_dt - entry_break
+                entry_total_delta = round_timedelta(entry_t_raw_delta, period)
+                entry_round_delta = entry_total_delta - entry_t_raw_delta
+
+                if entry_t_raw_delta < datetime.timedelta(0):
+                    raise RuntimeError(
+                        '%s: Entry %s  has negative delta'
+                        % (filename, entry_start_dt))
+
+                if 'ignore' not in entry:
                     entry = Entry(
                         project=project,
                         date=date,
-                        title=entry['title'],
+                        title=title,
                         text=entry.get('text'),
                         start_time=entry_start_t,
                         stop_time=entry_stop_t,
@@ -482,7 +521,6 @@ class Entries:
                         round_delta=entry_round_delta,
                         total_delta=entry_total_delta,
                     )
-
                     project.add_entry(entry)
                     self.all.add_entry(entry)
 
