@@ -4,15 +4,15 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-docutils = "==0.14"
-ibis = "==1.6.0"
-PyYAML = "==3.12"
+docutils = "~=0.14"
+ibis = "~=1.6"
+PyYAML = "~=5.1"
 
 [dev-packages]
-mypy = "==0.580"
-typed-ast = "==1.1.0"
-isort = "==4.3.4"
-"flake8" = "==3.5.0"
+mypy = "~=0.580"
+typed-ast = "~=1.1"
+isort = "~=4.3"
+"flake8" = "~=3.5"
 
 [requires]
 python_version = "3.7"
