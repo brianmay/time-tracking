@@ -1,7 +1,6 @@
 ---
 layout: post
 title: LTS report {{entries.start_date}} to {{entries.stop_date}}
-categories: debian_lts
 begin: {{entries.start_date}}
 end: {{entries.stop_date}}
 hours: {{ entries.all.total_delta|dformat('decimal') }}
