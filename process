@@ -2,11 +2,22 @@
 import argparse
 import calendar
 import datetime
+import itertools
 import operator
 import os.path
 import sys
-import itertools
-from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeVar, Iterable
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+)
+
+import yaml
 
 import docutils.core
 import ibis
@@ -14,7 +25,7 @@ import ibis.errors
 import ibis.filters
 import ibis.loaders
 import ibis.nodes
-import yaml
+from ibis.templates import Lexer
 
 
 T = TypeVar('T')
@@ -22,15 +33,15 @@ T = TypeVar('T')
 
 def previous_and_next(
     some_iterable: Iterable[T]
-) -> Iterable[Tuple[Optional[T], Optional[T], Optional[T]]]:
-    prevs, items, nexts = itertools.tee(some_iterable, 3)
-    prevs = itertools.chain([None], prevs)
-    nexts = itertools.chain(itertools.islice(nexts, 1, None), [None])
+) -> Iterable[Tuple[Optional[T], T, Optional[T]]]:
+    prevs_temp, items, nexts_temp = itertools.tee(some_iterable, 3)
+    prevs = itertools.chain([None], prevs_temp)
+    nexts = itertools.chain(itertools.islice(nexts_temp, 1, None), [None])
     return zip(prevs, items, nexts)
 
 
 @ibis.filters.register('dformat')
-def delta_formatter(delta: datetime.timedelta, delta_format: str='hh:mm') -> str:
+def delta_formatter(delta: datetime.timedelta, delta_format: str = 'hh:mm') -> str:
     if isinstance(delta, ibis.errors.Undefined):
         return ''
     if delta_format == "decimal":
@@ -44,14 +55,14 @@ def delta_formatter(delta: datetime.timedelta, delta_format: str='hh:mm') -> str
 
 
 @ibis.filters.register('round_delta')
-def delta_formatter(delta: datetime.timedelta, period: str='hh:mm') -> str:
-    period = parse_delta(period)
-    return round_timedelta(delta, period)
+def delta_formatter_round(delta: datetime.timedelta, period: str = 'hh:mm') -> datetime.timedelta:
+    period_delta = parse_delta(period)
+    return round_timedelta(delta, period_delta)
 
 
-@ibis.nodes.register('add_delta')
+@ibis.nodes.register('add_delta', None)
 class AddDelta(ibis.nodes.Node):
-    def process_token(self, token):
+    def process_token(self, token: Lexer.token) -> None:
         tag, total, value = token.content.split(None, 2)
         self.total = ibis.nodes.Expression(total)
         self.value = ibis.nodes.Expression(value)
@@ -200,7 +211,7 @@ def add_months(date: datetime.date, months: int) -> datetime.date:
     year = date.year + month // 12
     month = month % 12 + 1
     day = min(date.day, calendar.monthrange(year, month)[1])
-    return datetime.date(year, month,day)
+    return datetime.date(year, month, day)
 
 
 def get_date_range(date: datetime.date, one: bool, two: bool, month: bool) -> DateRange:
@@ -313,6 +324,17 @@ class AggregatedProject:
         self.project = project
 
 
+class AggregatedTask:
+    def __init__(
+            self, *, date: datetime.date,
+            total_delta: datetime.timedelta,
+            project: 'Project', task: str) -> None:
+        self.date = date
+        self.total_delta = total_delta
+        self.project = project
+        self.task = task
+
+
 class EntryList:
     def __init__(self) -> None:
         self._dates: List[datetime.date] = []
@@ -371,6 +393,35 @@ class EntryList:
                     total_delta=days[date][project]['total_delta'],
                     project=project,
                 )
+
+    def task_report(self) -> Iterator[AggregatedTask]:
+        days: Dict[datetime.date, Dict[Project, Dict[str, Dict[str, datetime.timedelta]]]] = {}
+
+        for date in self._dates:
+            for entry in self._entries[date]:
+                if date not in days:
+                    days[date] = {}
+                project = entry.project
+                task = entry.title
+                if project not in days[date]:
+                    days[date][project] = {}
+                if task not in days[date][project]:
+                    days[date][project][task] = {
+                        'total_delta': datetime.timedelta()
+                    }
+                days[date][project][task]['total_delta'] += entry.total_delta
+
+        dates = list(days.keys())
+        dates.sort()
+        for date in dates:
+            for project in days[date]:
+                for task in days[date][project]:
+                    yield AggregatedTask(
+                        date=date,
+                        total_delta=days[date][project][task]['total_delta'],
+                        project=project,
+                        task=task,
+                    )
 
     def daily_report(self) -> Iterator[AggregatedDay]:
         days: Dict[datetime.date, Dict[str, datetime.timedelta]] = {}
@@ -484,6 +535,7 @@ class Entries:
                 entry_start_t = parse_time(entry['start'])
 
                 if 'stop' not in entry:
+                    assert next_entry is not None
                     if next_entry_same_day and 'start' in next_entry:
                         entry_stop_t = parse_time(next_entry['start'])
                     elif next_entry_same_day and 'stop' in next_entry:
