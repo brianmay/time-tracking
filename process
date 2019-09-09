@@ -279,14 +279,14 @@ def round_timedelta(td: datetime.timedelta, period: datetime.timedelta) -> datet
 class Entry:
     def __init__(
             self, *,
-            project: 'Project',
-            date: datetime.date, title: str, text: str,
+            task: 'Task',
+            date: datetime.date, text: str,
             start_time: datetime.time, stop_time: datetime.time,
             break_delta: datetime.timedelta, t_raw_delta: datetime.timedelta,
             round_delta: datetime.timedelta, total_delta: datetime.timedelta) -> None:
-        self.project = project
+        self.project = task.project
+        self.task = task
         self.date = date
-        self.title = title
         self.text = text
         self.start_time = start_time
         self.stop_time = stop_time
@@ -299,9 +299,9 @@ class Entry:
 class AggregatedTextEntry:
     def __init__(
             self, *,
-            title: str, text: str,
+            task: 'Task', text: str,
             total_delta: datetime.timedelta) -> None:
-        self.title = title
+        self.task = task
         self.text = text
         self.total_delta = total_delta
 
@@ -328,10 +328,9 @@ class AggregatedTask:
     def __init__(
             self, *, date: datetime.date,
             total_delta: datetime.timedelta,
-            project: 'Project', task: str) -> None:
+            task: 'Task') -> None:
         self.date = date
         self.total_delta = total_delta
-        self.project = project
         self.task = task
 
 
@@ -377,7 +376,7 @@ class EntryList:
             for entry in self._entries[date]:
                 if date not in days:
                     days[date] = {}
-                project = entry.project
+                project = entry.task.project
                 if project not in days[date]:
                     days[date][project] = {
                         'total_delta': datetime.timedelta()
@@ -395,14 +394,14 @@ class EntryList:
                 )
 
     def task_report(self) -> Iterator[AggregatedTask]:
-        days: Dict[datetime.date, Dict[Project, Dict[str, Dict[str, datetime.timedelta]]]] = {}
+        days: Dict[datetime.date, Dict[Project, Dict[Task, Dict[str, datetime.timedelta]]]] = {}
 
         for date in self._dates:
             for entry in self._entries[date]:
                 if date not in days:
                     days[date] = {}
-                project = entry.project
-                task = entry.title
+                project = entry.task.project
+                task = entry.task
                 if project not in days[date]:
                     days[date][project] = {}
                 if task not in days[date][project]:
@@ -419,7 +418,6 @@ class EntryList:
                     yield AggregatedTask(
                         date=date,
                         total_delta=days[date][project][task]['total_delta'],
-                        project=project,
                         task=task,
                     )
 
@@ -443,32 +441,46 @@ class EntryList:
             )
 
     def aggregated_text_report(self) -> Iterator[AggregatedTextEntry]:
-        report: Dict[str, str] = {}
-        delta: Dict[str, datetime.timedelta] = {}
+        report: Dict[Task, str] = {}
+        delta: Dict[Task, datetime.timedelta] = {}
         for date in self._dates:
             for entry in self._entries[date]:
-                if entry.title not in report:
-                    report[entry.title] = ""
-                    delta[entry.title] = datetime.timedelta()
+                if entry.task not in report:
+                    report[entry.task] = ""
+                    delta[entry.task] = datetime.timedelta()
                 if entry.text is not None:
-                    report[entry.title] += entry.text
-                delta[entry.title] += entry.total_delta
+                    report[entry.task] += entry.text
+                delta[entry.task] += entry.total_delta
 
-        titles = list(report.keys())
-        titles.sort()
-        for title in titles:
+        tasks = list(report.keys())
+        tasks.sort(key=lambda task: task.name)
+        for task in tasks:
             yield AggregatedTextEntry(
-                title=title,
-                text=report[title],
-                total_delta=delta[title],
+                task=task,
+                text=report[task],
+                total_delta=delta[task],
             )
 
 
-class Project(EntryList):
-    def __init__(self, filename: str, name: str) -> None:
-        self.filename = filename
+class Employer(EntryList):
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.entries: List[Entry] = []
+        self.projects: List['Project'] = []
+        super().__init__()
+
+
+class Project(EntryList):
+    def __init__(self, employer: Employer, name: str) -> None:
+        self.employer = employer
+        self.name = name
+        self.tasks: List['Task'] = []
+        super().__init__()
+
+
+class Task(EntryList):
+    def __init__(self, project: Project, name: str) -> None:
+        self.project = project
+        self.name = name
         super().__init__()
 
 
@@ -482,7 +494,9 @@ class Entries:
         # self._entries: Dict[datetime.date, List[Entry]] = {}
         # self._projects: List[Project] = []
         self.all = EntryList()
+        self._employers: List[Employer] = []
         self._projects: List[Project] = []
+        self._tasks: List[Task] = []
         self._read()
 
     def _read(self) -> None:
@@ -494,20 +508,29 @@ class Entries:
         self.start_date = start_range
         self.stop_date = stop_range
 
+        employers: Dict[str, Employer] = {}
+        projects: Dict[str, Project] = {}
+        tasks: Dict[str, Task] = {}
+
+        self._employers = []
         self._projects = []
+        self._tasks = []
+
         for filename in self._files:
             with open(filename) as stream:
                 root = yaml.safe_load(stream)
 
-            project_name = root["project"]
+            employer_name = root["employer"]
             period = parse_delta(root["period"])
 
-            project = Project(
-                filename=filename,
-                name=project_name,
-            )
-
-            self._projects.append(project)
+            if employer_name in employers:
+                employer = employers[employer_name]
+            else:
+                employer = Employer(
+                    name=employer_name
+                )
+                employers[employer_name] = employer
+                self._employers.append(employer)
 
             previous_stop_dt = None
             for prev_entry, entry, next_entry in previous_and_next(root["entries"]):
@@ -516,10 +539,35 @@ class Entries:
                 else:
                     date = date
 
-                if 'title' in entry:
-                    title = entry['title']
+                if 'task' not in entry:
+                # if 'title' not in entry:
+                    continue
+
+                project_name = entry['project']
+                # project_name = root["project"]
+                if project_name in projects:
+                    project = projects[project_name]
                 else:
-                    title = title
+                    project = Project(
+                        employer=employer,
+                        name=project_name
+                    )
+                    projects[project_name] = project
+                    self._projects.append(project)
+                    employer.projects.append(project)
+
+                task_name = entry['task']
+                # task_name = entry['title']
+                if task_name in tasks:
+                    task = tasks[task_name]
+                else:
+                    task = Task(
+                        project=project,
+                        name=task_name
+                    )
+                    tasks[task_name] = task
+                    self._tasks.append(task)
+                    project.tasks.append(task)
 
                 if next_entry is None:
                     next_entry_same_day = False
@@ -591,9 +639,8 @@ class Entries:
 
                 if 'ignore' not in entry:
                     entry = Entry(
-                        project=project,
+                        task=task,
                         date=date,
-                        title=title,
                         text=entry.get('text'),
                         start_time=entry_start_t,
                         stop_time=entry_stop_t,
@@ -602,8 +649,32 @@ class Entries:
                         round_delta=entry_round_delta,
                         total_delta=entry_total_delta,
                     )
+                    employer.add_entry(entry)
                     project.add_entry(entry)
+                    task.add_entry(entry)
                     self.all.add_entry(entry)
+
+        # for employer in self._employers:
+        #     entries = [
+        #         {
+        #             'task': entry.task.name,
+        #             'project': entry.task.project.name,
+        #             'date': str(entry.date),
+        #             'start': entry.start_time.strftime("%H:%M"),
+        #             'stop': entry.stop_time.strftime("%H:%M"),
+        #             'break': delta_to_hhmm(entry.break_delta),
+        #             'text': entry.text,
+        #         }
+        #         for entry in employer.sequential
+        #     ]
+
+        #     data = {
+        #         'employer': employer.name,
+        #         'entries': entries,
+        #     }
+
+        #     with open(f'{employer.name}.yml', 'w') as outfile:
+        #         yaml.dump(data, outfile)
 
     @property
     def projects(self) -> Iterator[Project]:
