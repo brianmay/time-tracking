@@ -539,10 +539,16 @@ class Entries:
                 else:
                     date = date
 
-                if 'task' not in entry:
-                    continue
+                if 'project' in entry:
+                    project_name = entry['project']
+                if project_name is None:
+                    raise RuntimeError('%s: No project given for %s' % (filename, entry))
 
-                project_name = entry['project']
+                if 'task' in entry:
+                    task_name = entry['task']
+                if task_name is None:
+                    raise RuntimeError('%s: No task given for %s' % (filename, entry))
+
                 if project_name in projects:
                     project = projects[project_name]
                 else:
@@ -554,7 +560,6 @@ class Entries:
                     self._projects.append(project)
                     employer.projects.append(project)
 
-                task_name = entry['task']
                 if task_name in tasks:
                     task = tasks[task_name]
                 else:
@@ -583,8 +588,6 @@ class Entries:
                     assert next_entry is not None
                     if next_entry_same_day and 'start' in next_entry:
                         entry_stop_t = parse_time(next_entry['start'])
-                    elif next_entry_same_day and 'stop' in next_entry:
-                        entry_stop_t = parse_time(next_entry['stop'])
                     else:
                         raise RuntimeError('%s: Cannot get stop time for %s' % (filename, entry))
                 else:
