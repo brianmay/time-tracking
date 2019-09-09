@@ -8,8 +8,9 @@
         <th>Break</th>
         <th>Round</th>
         <th>Total</th>
+        <th>Employer</th>
         <th>Project</th>
-        <th>Description</th>
+        <th>Task</th>
     </tr>
     {% for entry in entries.all.sequential %}
         <tr>
@@ -20,8 +21,9 @@
             <td>{{{ entry.break_delta|dformat('hh:mm') }}}</td>
             <td>{{{ entry.round_delta|dformat('hh:mm') }}}</td>
             <td>{{{ entry.total_delta|dformat('hh:mm') }}}</td>
-            <td>{{{ entry.project.name }}}</td>
-            <td>{{{ entry.title }}}</td>
+            <td>{{{ entry.task.project.employer.name }}}</td>
+            <td>{{{ entry.task.project.name }}}</td>
+            <td>{{{ entry.task.name }}}</td>
         </tr>
     {% endfor %}
     <tr>

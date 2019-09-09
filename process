@@ -284,7 +284,6 @@ class Entry:
             start_time: datetime.time, stop_time: datetime.time,
             break_delta: datetime.timedelta, t_raw_delta: datetime.timedelta,
             round_delta: datetime.timedelta, total_delta: datetime.timedelta) -> None:
-        self.project = task.project
         self.task = task
         self.date = date
         self.text = text
