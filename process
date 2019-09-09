@@ -540,11 +540,9 @@ class Entries:
                     date = date
 
                 if 'task' not in entry:
-                # if 'title' not in entry:
                     continue
 
                 project_name = entry['project']
-                # project_name = root["project"]
                 if project_name in projects:
                     project = projects[project_name]
                 else:
@@ -557,7 +555,6 @@ class Entries:
                     employer.projects.append(project)
 
                 task_name = entry['task']
-                # task_name = entry['title']
                 if task_name in tasks:
                     task = tasks[task_name]
                 else:
@@ -653,28 +650,6 @@ class Entries:
                     project.add_entry(entry)
                     task.add_entry(entry)
                     self.all.add_entry(entry)
-
-        # for employer in self._employers:
-        #     entries = [
-        #         {
-        #             'task': entry.task.name,
-        #             'project': entry.task.project.name,
-        #             'date': str(entry.date),
-        #             'start': entry.start_time.strftime("%H:%M"),
-        #             'stop': entry.stop_time.strftime("%H:%M"),
-        #             'break': delta_to_hhmm(entry.break_delta),
-        #             'text': entry.text,
-        #         }
-        #         for entry in employer.sequential
-        #     ]
-
-        #     data = {
-        #         'employer': employer.name,
-        #         'entries': entries,
-        #     }
-
-        #     with open(f'{employer.name}.yml', 'w') as outfile:
-        #         yaml.dump(data, outfile)
 
     @property
     def projects(self) -> Iterator[Project]:
