@@ -130,7 +130,10 @@ def parse_date(string: str) -> datetime.date:
 
 
 def parse_time(string: str) -> datetime.time:
-    hh, mm = string.split(":", maxsplit=2)
+    try:
+        hh, mm = string.split(":", maxsplit=2)
+    except Exception as e:
+        raise RuntimeError(f"Error parsing {string}: {e}")
     return datetime.time(hour=int(hh), minute=int(mm))
 
 
