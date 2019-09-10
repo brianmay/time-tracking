@@ -217,7 +217,7 @@ def add_months(date: datetime.date, months: int) -> datetime.date:
     return datetime.date(year, month, day)
 
 
-def get_date_range(date: datetime.date, one: bool, two: bool, month: bool) -> DateRange:
+def get_date_range(date: datetime.date, day: bool, one: bool, two: bool, month: bool) -> DateRange:
     current_date = datetime.datetime.combine(date, datetime.time())
 
     start_date: Optional[datetime.date] = None
@@ -226,7 +226,16 @@ def get_date_range(date: datetime.date, one: bool, two: bool, month: bool) -> Da
     start_range: Optional[datetime.datetime] = None
     stop_range: Optional[datetime.datetime] = None
 
-    if one:
+    if day:
+        start_range = (
+            current_date
+        )
+        stop_range = (
+            current_date
+        )
+        start_date = start_range.date()
+        stop_date = stop_range.date()
+    elif one:
         start_range = (
             current_date
             - datetime.timedelta(days=current_date.weekday())
@@ -679,6 +688,7 @@ def main() -> None:
     parser.add_argument("-d", "--date", dest="date")
 
     group = parser.add_mutually_exclusive_group()
+    group.add_argument("-D", "--day", dest="day", action="store_true")
     group.add_argument("-1", "--1week", dest="one", action="store_true")
     group.add_argument("-2", "--2week", dest="two", action="store_true")
     group.add_argument("-m", "--month", dest="month", action="store_true")
@@ -700,6 +710,7 @@ def main() -> None:
 
     date_range = get_date_range(
         date=date,
+        day=kwargs.pop('day', None),
         one=kwargs.pop('one', None),
         two=kwargs.pop('two', None),
         month=kwargs.pop('month', None),
