@@ -479,6 +479,12 @@ class Employer(EntryList):
         self.projects: List['Project'] = []
         super().__init__()
 
+    def get_project_by_name(self, name: str) -> Optional['Project']:
+        for project in self.projects:
+            if project.name == name:
+                return project
+        return None
+
 
 class Project(EntryList):
     def __init__(self, employer: Employer, name: str) -> None:
@@ -486,6 +492,12 @@ class Project(EntryList):
         self.name = name
         self.tasks: List['Task'] = []
         super().__init__()
+
+    def get_task_by_name(self, name: str) -> Optional['Task']:
+        for task in self.tasks:
+            if task.name == name:
+                return task
+        return None
 
 
 class Task(EntryList):
@@ -502,12 +514,8 @@ class Entries:
         self._dates: List[datetime.date] = []
         # self.t_raw_delta = datetime.timedelta()
         # self.total_delta = datetime.timedelta()
-        # self._entries: Dict[datetime.date, List[Entry]] = {}
-        # self._projects: List[Project] = []
         self.all = EntryList()
         self._employers: List[Employer] = []
-        self._projects: List[Project] = []
-        self._tasks: List[Task] = []
         self._read()
 
     def _read(self) -> None:
@@ -520,13 +528,8 @@ class Entries:
         self.stop_date = stop_range
 
         employers: Dict[str, Employer] = {}
-        projects: Dict[str, Project] = {}
-        tasks: Dict[str, Task] = {}
 
         self._employers = []
-        self._projects = []
-        self._tasks = []
-
         for filename in self._files:
             with open(filename) as stream:
                 root = yaml.safe_load(stream)
@@ -560,26 +563,20 @@ class Entries:
                 if task_name is None:
                     raise RuntimeError('%s: No task given for %s' % (filename, entry))
 
-                if project_name in projects:
-                    project = projects[project_name]
-                else:
+                project = employer.get_project_by_name(project_name)
+                if project is None:
                     project = Project(
                         employer=employer,
                         name=project_name
                     )
-                    projects[project_name] = project
-                    self._projects.append(project)
                     employer.projects.append(project)
 
-                if task_name in tasks:
-                    task = tasks[task_name]
-                else:
+                task = project.get_task_by_name(task_name)
+                if task is None:
                     task = Task(
                         project=project,
                         name=task_name
                     )
-                    tasks[task_name] = task
-                    self._tasks.append(task)
                     project.tasks.append(task)
 
                 if next_entry is None:
@@ -667,9 +664,10 @@ class Entries:
 
     @property
     def projects(self) -> Iterator[Project]:
-        for project in self._projects:
-            if not project.is_empty:
-                yield project
+        for employer in self._employers:
+            for project in employer.projects:
+                if not project.is_empty:
+                    yield project
 
 
 def report(date_range: DateRange, files: List[str], template_name: str) -> None:
