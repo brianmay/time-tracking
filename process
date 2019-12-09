@@ -499,12 +499,19 @@ class Project(EntryList):
                 return task
         return None
 
+    def __str__(self):
+        return self.name
+
 
 class Task(EntryList):
-    def __init__(self, project: Project, name: str) -> None:
+    def __init__(self, project: Project, name: str, title: str) -> None:
         self.project = project
         self.name = name
+        self.title = title or name
         super().__init__()
+
+    def __str__(self):
+        return self.title
 
 
 class Entries:
@@ -546,7 +553,23 @@ class Entries:
                 employers[employer_name] = employer
                 self._employers.append(employer)
 
+            for project_name, project_details in root["projects"].items():
+                project = Project(
+                    employer=employer,
+                    name=project_name,
+                )
+                employer.projects.append(project)
+                for task_name, task_details in project_details["tasks"].items():
+                    task = Task(
+                        project=project,
+                        name=task_name,
+                        title=task_details.get('title'),
+                    )
+                    project.tasks.append(task)
+
+
             previous_stop_dt = None
+            add = {}
             for prev_entry, entry, next_entry in previous_and_next(root["entries"]):
                 if 'date' in entry:
                     date = entry['date']
@@ -555,6 +578,7 @@ class Entries:
 
                 if 'project' in entry:
                     project_name = entry['project']
+                    task_name = None
                 if project_name is None:
                     raise RuntimeError('%s: No project given for %s' % (filename, entry))
 
@@ -563,21 +587,21 @@ class Entries:
                 if task_name is None:
                     raise RuntimeError('%s: No task given for %s' % (filename, entry))
 
+                if project_name not in add:
+                    add[project_name] = { 'tasks': {}}
+                if task_name not in add[project_name]["tasks"]:
+                    task_id = task_name
+                    add[project_name]["tasks"][task_id] = {'title': task_name}
+
                 project = employer.get_project_by_name(project_name)
                 if project is None:
-                    project = Project(
-                        employer=employer,
-                        name=project_name
-                    )
-                    employer.projects.append(project)
+                    # raise RuntimeError("Unknown project '%s'" % project_name)
+                    project = employer.get_project_by_name("default")
 
                 task = project.get_task_by_name(task_name)
                 if task is None:
-                    task = Task(
-                        project=project,
-                        name=task_name
-                    )
-                    project.tasks.append(task)
+                    # raise RuntimeError("Unknown project '%s' task '%s'" % (project,task_name))
+                    task = project.get_task_by_name("default")
 
                 if next_entry is None:
                     next_entry_same_day = False
@@ -661,6 +685,10 @@ class Entries:
                     project.add_entry(entry)
                     task.add_entry(entry)
                     self.all.add_entry(entry)
+
+            import sys
+            print(yaml.dump({'projects': add}))
+
 
     @property
     def projects(self) -> Iterator[Project]:
