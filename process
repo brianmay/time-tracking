@@ -499,7 +499,7 @@ class Project(EntryList):
                 return task
         return None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -510,7 +510,7 @@ class Task(EntryList):
         self.title = title or name
         super().__init__()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title
 
 
@@ -526,8 +526,22 @@ class Entries:
         self._read()
 
     def _read(self) -> None:
+        def load_projects(root: Dict[str, Any], employer: Employer) -> None:
+            for project_name, project_details in root["projects"].items():
+                project = Project(
+                    employer=employer,
+                    name=project_name,
+                )
+                employer.projects.append(project)
+                for task_name, task_details in project_details["tasks"].items():
+                    task = Task(
+                        project=project,
+                        name=task_name,
+                        title=task_details.get('title'),
+                    )
+                    project.tasks.append(task)
+
         current_datetime = datetime.datetime.now()
-        current_date = current_datetime.date()
         start_range = self._date_range[0]
         stop_range = self._date_range[1]
 
@@ -553,23 +567,9 @@ class Entries:
                 employers[employer_name] = employer
                 self._employers.append(employer)
 
-            for project_name, project_details in root["projects"].items():
-                project = Project(
-                    employer=employer,
-                    name=project_name,
-                )
-                employer.projects.append(project)
-                for task_name, task_details in project_details["tasks"].items():
-                    task = Task(
-                        project=project,
-                        name=task_name,
-                        title=task_details.get('title'),
-                    )
-                    project.tasks.append(task)
-
+            load_projects(root, employer)
 
             previous_stop_dt = None
-            add = {}
             for prev_entry, entry, next_entry in previous_and_next(root["entries"]):
                 if 'date' in entry:
                     date = entry['date']
@@ -587,21 +587,13 @@ class Entries:
                 if task_name is None:
                     raise RuntimeError('%s: No task given for %s' % (filename, entry))
 
-                if project_name not in add:
-                    add[project_name] = { 'tasks': {}}
-                if task_name not in add[project_name]["tasks"]:
-                    task_id = task_name
-                    add[project_name]["tasks"][task_id] = {'title': task_name}
-
-                project = employer.get_project_by_name(project_name)
+                project: Optional[Project] = employer.get_project_by_name(project_name)
                 if project is None:
-                    # raise RuntimeError("Unknown project '%s'" % project_name)
-                    project = employer.get_project_by_name("default")
+                    raise RuntimeError("Unknown project '%s'" % project_name)
 
                 task = project.get_task_by_name(task_name)
                 if task is None:
-                    # raise RuntimeError("Unknown project '%s' task '%s'" % (project,task_name))
-                    task = project.get_task_by_name("default")
+                    raise RuntimeError("Unknown project '%s' task '%s'" % (project, task_name))
 
                 if next_entry is None:
                     next_entry_same_day = False
@@ -685,10 +677,6 @@ class Entries:
                     project.add_entry(entry)
                     task.add_entry(entry)
                     self.all.add_entry(entry)
-
-            import sys
-            print(yaml.dump({'projects': add}))
-
 
     @property
     def projects(self) -> Iterator[Project]:
