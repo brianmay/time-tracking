@@ -12,7 +12,7 @@
             <td>{{{ entry.date }}}</td>
             <td>{{{ entry.date|dtformat('%A') }}}</td>
             <td>{{{ entry.task.project.name }}}</td>
-            <td>{{{ entry.task.name }}}</td>
+            <td>{{{ entry.task.title }}}</td>
             <td>{{{ entry.total_delta|dformat('hh:mm') }}}</td>
         </tr>
     {% endfor %}
