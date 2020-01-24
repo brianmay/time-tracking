@@ -525,6 +525,10 @@ class Entries:
         self._employers: List[Employer] = []
         self._read()
 
+    @property
+    def employers(self):
+        return self._employers
+
     def _read(self) -> None:
         def load_projects(root: Dict[str, Any], employer: Employer) -> None:
             for project_name, project_details in root["projects"].items():
