@@ -645,6 +645,8 @@ class Entries:
                             '%s: Entry %s starts before previous entry stops %s'
                             % (filename, entry_start_dt, previous_stop_dt))
 
+                previous_stop_dt = entry_stop_dt
+
                 bill_date = date
                 if 'bill_date' in entry:
                     bill_date = entry['bill_date']
@@ -653,8 +655,6 @@ class Entries:
                     continue
                 if stop_range and bill_date > stop_range:
                     continue
-
-                previous_stop_dt = entry_stop_dt
 
                 entry_t_raw_delta = entry_stop_dt - entry_start_dt - entry_break
                 entry_total_delta = round_timedelta(entry_t_raw_delta, period)
