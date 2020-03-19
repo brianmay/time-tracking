@@ -515,8 +515,9 @@ class Task(EntryList):
 
 
 class Entries:
-    def __init__(self, *, date_range: DateRange, files: List[str]) -> None:
+    def __init__(self, *, date_range: DateRange, location: Optional[str], files: List[str]) -> None:
         self._date_range = date_range
+        self._location = location
         self._files = files
         self._dates: List[datetime.date] = []
         # self.t_raw_delta = datetime.timedelta()
@@ -573,12 +574,16 @@ class Entries:
 
             load_projects(root, employer)
 
+            location = None
             previous_stop_dt = None
             for prev_entry, entry, next_entry in previous_and_next(root["entries"]):
                 if 'date' in entry:
                     date = entry['date']
                 else:
                     date = date
+
+                if 'location' in entry:
+                    location = entry['location']
 
                 if 'project' in entry:
                     project_name = entry['project']
@@ -651,6 +656,8 @@ class Entries:
                 if 'bill_date' in entry:
                     bill_date = entry['bill_date']
 
+                if self._location is not None and location != self._location:
+                    continue
                 if start_range and bill_date < start_range:
                     continue
                 if stop_range and bill_date > stop_range:
@@ -690,13 +697,13 @@ class Entries:
                     yield project
 
 
-def report(date_range: DateRange, files: List[str], template_name: str) -> None:
+def report(date_range: DateRange, location: Optional[str], files: List[str], template_name: str) -> None:
     home_dir = os.path.dirname(os.path.realpath(__file__))
     template_dir = os.path.join(home_dir, 'templates')
     loader = ibis.loaders.FileLoader(template_dir)
     template = loader(template_name)
     output = template.render({
-        'entries': Entries(date_range=date_range, files=files),
+        'entries': Entries(date_range=date_range, location=location, files=files),
     })
     sys.stdout.write(output)
 
@@ -704,6 +711,7 @@ def report(date_range: DateRange, files: List[str], template_name: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description='Process time sheet.')
     parser.add_argument("-d", "--date", dest="date")
+    parser.add_argument("-l", "--location", dest="location")
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-D", "--day", dest="day", action="store_true")
