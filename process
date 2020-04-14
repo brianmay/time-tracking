@@ -17,14 +17,13 @@ from typing import (
     TypeVar,
 )
 
-import yaml
-
 import docutils.core
 import ibis
 import ibis.errors
 import ibis.filters
 import ibis.loaders
 import ibis.nodes
+import yaml
 from ibis.templates import Lexer
 
 
