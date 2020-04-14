@@ -325,6 +325,16 @@ class AggregatedDay:
         self.total_delta = total_delta
 
 
+class AggregatedEmployer:
+    def __init__(
+            self, *, date: datetime.date,
+            total_delta: datetime.timedelta,
+            employer: 'Employer') -> None:
+        self.date = date
+        self.total_delta = total_delta
+        self.employer = employer
+
+
 class AggregatedProject:
     def __init__(
             self, *, date: datetime.date,
@@ -379,6 +389,30 @@ class EntryList:
         for date in self._dates:
             for entry in self._entries[date]:
                 yield entry
+
+    def employer_report(self) -> Iterator[AggregatedEmployer]:
+        days: Dict[datetime.date, Dict[Employer, Dict[str, datetime.timedelta]]] = {}
+
+        for date in self._dates:
+            for entry in self._entries[date]:
+                if date not in days:
+                    days[date] = {}
+                employer = entry.task.project.employer
+                if employer not in days[date]:
+                    days[date][employer] = {
+                        'total_delta': datetime.timedelta()
+                    }
+                days[date][employer]['total_delta'] += entry.total_delta
+
+        dates = list(days.keys())
+        dates.sort()
+        for date in dates:
+            for employer in days[date]:
+                yield AggregatedEmployer(
+                    date=date,
+                    total_delta=days[date][employer]['total_delta'],
+                    employer=employer,
+                )
 
     def project_report(self) -> Iterator[AggregatedProject]:
         days: Dict[datetime.date, Dict[Project, Dict[str, datetime.timedelta]]] = {}

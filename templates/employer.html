@@ -1,27 +1,24 @@
-<h1>Task report {{{entries.start_date}}} to {{{entries.stop_date}}}</h1>
+<h1>Employer report {{{entries.start_date}}} to {{{entries.stop_date}}}</h1>
 <table>
     <tr>
         <th>Date</th>
         <th>Day</th>
-        <th>Project</th>
-        <th>Task</th>
+        <th>Employer</th>
         <th>Total</th>
     </tr>
-    {% for entry in entries.all.task_report %}
+    {% for entry in entries.all.employer_report %}
         <tr>
             <td>{{{ entry.date }}}</td>
             <td>{{{ entry.date|dtformat('%A') }}}</td>
-            <td>{{{ entry.task.project.name }}}</td>
-            <td>{{{ entry.task.title }}}</td>
+            <td>{{{ entry.employer.name }}}</td>
             <td>{{{ entry.total_delta|dformat('hh:mm') }}}</td>
         </tr>
     {% endfor %}
     <tr>
         <td>TOTAL</td>
         <td></td>
-        <td></td>
-        <td></td>
         <td>{{{ entries.all.total_delta|dformat('hh:mm') }}}</td>
     </tr>
 </table>
+
 
