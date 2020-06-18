@@ -537,10 +537,11 @@ class Project(EntryList):
 
 
 class Task(EntryList):
-    def __init__(self, project: Project, name: str, title: str) -> None:
+    def __init__(self, project: Project, name: str, title: str, url: str) -> None:
         self.project = project
         self.name = name
         self.title = title or name
+        self.url = url
         super().__init__()
 
     def __str__(self) -> str:
@@ -576,6 +577,7 @@ class Entries:
                         project=project,
                         name=task_name,
                         title=task_details.get('title'),
+                        url=task_details.get('url'),
                     )
                     project.tasks.append(task)
 
