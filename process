@@ -218,7 +218,7 @@ def add_months(date: datetime.date, months: int) -> datetime.date:
     return datetime.date(year, month, day)
 
 
-def get_date_range(date: datetime.date, day: bool, one: bool, two: bool, month: bool) -> DateRange:
+def get_date_range(date: datetime.date, day: bool, one: bool, two: bool, month: bool, financial_year: bool) -> DateRange:
     current_date = date
 
     start_date: Optional[datetime.date] = None
@@ -253,6 +253,15 @@ def get_date_range(date: datetime.date, day: bool, one: bool, two: bool, month: 
         stop_date = (
             add_months(current_date, 1).replace(day=1)
             - datetime.timedelta(days=1)
+        )
+    elif financial_year:
+        if current_date.month < 7:
+            start_date = current_date.replace(day=1, month=7, year=current_date.year-1)
+        else:
+            start_date = current_date.replace(day=1, month=7)
+
+        stop_date = current_date.replace(
+            day=30, month=6, year=start_date.year+1
         )
 
     return (start_date, stop_date)
@@ -741,6 +750,7 @@ def main() -> None:
     group.add_argument("-1", "--1week", dest="one", action="store_true")
     group.add_argument("-2", "--2week", dest="two", action="store_true")
     group.add_argument("-m", "--month", dest="month", action="store_true")
+    group.add_argument("-f", "--financial_year", dest="financial_year", action="store_true")
 
     subparsers = parser.add_subparsers(dest='subparser')
 
@@ -763,6 +773,7 @@ def main() -> None:
         one=kwargs.pop('one', None),
         two=kwargs.pop('two', None),
         month=kwargs.pop('month', None),
+        financial_year=kwargs.pop('financial_year', None),
     )
     kwargs['date_range'] = date_range
     task = kwargs.pop('subparser', None)
