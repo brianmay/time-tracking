@@ -3,7 +3,7 @@ name = "time-tracking"
 version = "0.0.0"
 description = "Track time usage in yaml files"
 authors = ["Brian May <brian@linuxpenguins.xyz>"]
-license = "GPL-3"
+license = "GPL3+"
 
 [tool.poetry.dependencies]
 python = "^3.8"
