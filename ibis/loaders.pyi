@@ -1,6 +1,0 @@
-from typing import Any, Callable
-
-class Template:
-    def render(self, *args: Any) -> str: ...
-
-def FileLoader(*args: str) -> Callable[[str], Template]: ...
