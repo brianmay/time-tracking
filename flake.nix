@@ -1,8 +1,8 @@
 {
-  description = "Application packaged using poetry2nix";
+  description = "Time tracking application";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-22.11";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
   inputs.poetry2nix = {
     url = "github:nix-community/poetry2nix";
     inputs.nixpkgs.follows = "nixpkgs";
@@ -16,8 +16,8 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in {
         packages = {
-          myapp = mkPoetryApplication { projectDir = self; };
-          default = self.packages.${system}.myapp;
+          time-tracking = mkPoetryApplication { projectDir = self; };
+          default = self.packages.${system}.time-tracking;
         };
 
         devShells.default =

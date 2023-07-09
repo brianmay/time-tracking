@@ -6,16 +6,16 @@ authors = ["Brian May <brian@linuxpenguins.xyz>"]
 license = "GPL3+"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-docutils = "~=0.14"
-ibis = "~=1.6"
-PyYAML = "~=5.1"
+python = "^3.10"
+docutils = "*"
+ibis = "*"
+PyYAML = "*"
 
 [tool.poetry.dev-dependencies]
-mypy = "~=0.580"
-typed-ast = "~=1.1"
-isort = "~=4.3"
-flake8 = "~=3.5"
+mypy = "*"
+typed-ast = "*"
+isort = "*"
+flake8 = "*"
 
 [tool.poetry.scripts]
 time-tracking = "time_tracking:main"
