@@ -25,7 +25,7 @@ import ibis.filters
 import ibis.loaders
 import ibis.nodes
 import yaml
-from ibis.templates import Lexer
+from ibis.compiler import Token
 
 
 T = TypeVar('T')
@@ -63,7 +63,7 @@ def delta_formatter_round(delta: datetime.timedelta, period: str = 'hh:mm') -> d
 
 @ibis.nodes.register('add_delta', None)
 class AddDelta(ibis.nodes.Node):
-    def process_token(self, token: Lexer.token) -> None:
+    def process_token(self, token: Token) -> None:
         tag, total, value = token.content.split(None, 2)
         self.total = ibis.nodes.Expression(total)
         self.value = ibis.nodes.Expression(value)
