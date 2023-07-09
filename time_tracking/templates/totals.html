@@ -1,4 +1,4 @@
-<h1>Employers {{{entries.start_date}}} to {{{entries.stop_date}}}</h1>
+<h1>Employers {{entries.start_date}} to {{entries.stop_date}}</h1>
 <table>
     <tr>
         <th>Employer</th>
@@ -6,13 +6,13 @@
     </tr>
     {% for employer in entries.employers %}
         <tr>
-            <td>{{{ employer.name }}}</td>
-            <td>{{{ employer.total_delta|dformat('hh:mm') }}}</td>
+            <td>{{ employer.name }}</td>
+            <td>{{ employer.total_delta|dformat('hh:mm') }}</td>
         </tr>
     {% endfor %}
 </table>
 
-<h1>Projects {{{entries.start_date}}} to {{{entries.stop_date}}}</h1>
+<h1>Projects {{entries.start_date}} to {{entries.stop_date}}</h1>
 <table>
     <tr>
         <th>Employer</th>
@@ -23,16 +23,16 @@
     {% for project in employer.projects %}
     {% if project.total_delta %}
         <tr>
-            <td>{{{ employer.name }}}</td>
-            <td>{{{ project.name }}}</td>
-            <td>{{{ project.total_delta|dformat('hh:mm') }}}</td>
+            <td>{{ employer.name }}</td>
+            <td>{{ project.name }}</td>
+            <td>{{ project.total_delta|dformat('hh:mm') }}</td>
         </tr>
     {% endif %}
     {% endfor %}
     {% endfor %}
 </table>
 
-<h1>Tasks {{{entries.start_date}}} to {{{entries.stop_date}}}</h1>
+<h1>Tasks {{entries.start_date}} to {{entries.stop_date}}</h1>
 <table>
     <tr>
         <th>Employer</th>
@@ -45,10 +45,10 @@
     {% for task in project.tasks %}
     {% if task.total_delta %}
         <tr>
-            <td>{{{ employer.name }}}</td>
-            <td>{{{ project.name }}}</td>
-            <td>{{{ task.name }}}</td>
-            <td>{{{ task.total_delta|dformat('hh:mm') }}}</td>
+            <td>{{ employer.name }}</td>
+            <td>{{ project.name }}</td>
+            <td>{{ task.name }}</td>
+            <td>{{ task.total_delta|dformat('hh:mm') }}</td>
         </tr>
     {% endif %}
     {% endfor %}
