@@ -43,7 +43,7 @@ def previous_and_next(
 
 @ibis.filters.register('dformat')
 def delta_formatter(delta: datetime.timedelta, delta_format: str = 'hh:mm') -> str:
-    if isinstance(delta, ibis.errors.Undefined):
+    if isinstance(delta, ibis.errors.UndefinedVariable):
         return ''
     if delta_format == "decimal":
         return delta_to_decimal(delta)
