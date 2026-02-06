@@ -24,10 +24,18 @@ time-tracking = "time_tracking:main"
 
 [dependency-groups]
 dev = [
-    "mypy",
-    "isort",
-    "flake8",
+  "jedi-language-server>=0.44.0",
+  "pylsp-mypy>=0.7.0",
+  "python-lsp-server>=1.12.2",
+  "ruff>=0.11.2",
+  "types-docutils",
+  "types-PyYAML",
 ]
+
+[[tool.mypy.overrides]]
+module =  "ibis.*"
+ignore_missing_imports = true
+follow_untyped_imports = true
 
 [build-system]
 requires = ["uv_build>=0.9.28,<0.10.0"]
