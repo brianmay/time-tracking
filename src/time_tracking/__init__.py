@@ -19,13 +19,9 @@ from typing import (
 )
 
 import docutils.core
-import ibis
-import ibis.errors
-import ibis.filters
-import ibis.loaders
-import ibis.nodes
+import jinja2
 import yaml
-from ibis.compiler import Token
+from markupsafe import Markup
 
 
 T = TypeVar("T")
@@ -41,9 +37,8 @@ def previous_and_next(
     return zip(prevs, items, nexts)
 
 
-@ibis.filters.register("dformat")
 def delta_formatter(delta: datetime.timedelta, delta_format: str = "hh:mm") -> str:
-    if isinstance(delta, ibis.errors.UndefinedVariable):
+    if delta is None:
         return ""
     if delta_format == "decimal":
         return delta_to_decimal(delta)
@@ -55,7 +50,6 @@ def delta_formatter(delta: datetime.timedelta, delta_format: str = "hh:mm") -> s
         assert False
 
 
-@ibis.filters.register("round_delta")
 def delta_formatter_round(
     delta: datetime.timedelta, period: str = "hh:mm"
 ) -> datetime.timedelta:
@@ -63,68 +57,11 @@ def delta_formatter_round(
     return round_timedelta(delta, period_delta)
 
 
-@ibis.nodes.register("add_delta", None)
-class AddDelta(ibis.nodes.Node):
-    def process_token(self, token: Token) -> None:
-        tag, total, value = token.content.split(None, 2)
-        self.total = ibis.nodes.Expression(total)
-        self.value = ibis.nodes.Expression(value)
-
-    def render(self, context: Any) -> str:
-        total = self.total.eval(context)
-        value = self.value.eval(context)
-
-        if total in context:
-            result = context[total]
-        else:
-            result = datetime.timedelta()
-
-        result = result + value
-        context.stack[0][total] = result
-
-        content = super().render(context)
-        return content
-
-
-@ibis.filters.register("rst")
-def rst_formatter(text: str) -> str:
+def rst_formatter(text: str) -> Markup:
     if text is None:
-        return ""
-    return docutils.core.publish_parts(text, writer_name="html")["html_body"]
-
-
-@ibis.nodes.register("rst_l1_header", "end_rst_l1_header")
-class RstL1Header(ibis.nodes.Node):
-    def render(self, context: Any) -> str:
-        content = super().render(context).replace("\n", "")
-        result = [
-            "=" * len(content),
-            content,
-            "=" * len(content),
-        ]
-        return "\n".join(result)
-
-
-@ibis.nodes.register("rst_l2_header", "end_rst_l2_header")
-class RstL2Header(ibis.nodes.Node):
-    def render(self, context: Any) -> str:
-        content = super().render(context).replace("\n", "")
-        result = [
-            content,
-            "-" * len(content),
-        ]
-        return "\n".join(result)
-
-
-@ibis.nodes.register("rst_l3_header", "end_rst_l3_header")
-class RstL3Header(ibis.nodes.Node):
-    def render(self, context: Any) -> str:
-        content = super().render(context).replace("\n", "")
-        result = [
-            content,
-            "~" * len(content),
-        ]
-        return "\n".join(result)
+        return Markup("")
+    html = docutils.core.publish_parts(text, writer_name="html")["html_body"]
+    return Markup(html)
 
 
 def parse_date(string: str) -> datetime.date:
@@ -758,12 +695,23 @@ def report(
 ) -> None:
     home_dir = os.path.dirname(os.path.realpath(__file__))
     template_dir = os.path.join(home_dir, "templates")
-    loader = ibis.loaders.FileLoader(template_dir)
-    template = loader(template_name)
+    
+    # Create jinja2 environment
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(template_dir),
+        autoescape=jinja2.select_autoescape(['html', 'xml'])
+    )
+    
+    # Register custom filters
+    env.filters['dformat'] = delta_formatter
+    env.filters['round_delta'] = delta_formatter_round
+    env.filters['rst'] = rst_formatter
+    env.filters['dtformat'] = lambda dt, fmt: dt.strftime(fmt)
+    
+    # Load and render template
+    template = env.get_template(template_name)
     output = template.render(
-        {
-            "entries": Entries(date_range=date_range, location=location, files=files),
-        }
+        entries=Entries(date_range=date_range, location=location, files=files)
     )
     sys.stdout.write(output)
 
