@@ -695,19 +695,19 @@ def report(
 ) -> None:
     home_dir = os.path.dirname(os.path.realpath(__file__))
     template_dir = os.path.join(home_dir, "templates")
-    
+
     # Create jinja2 environment
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(template_dir),
-        autoescape=jinja2.select_autoescape(['html', 'xml'])
+        autoescape=jinja2.select_autoescape(["html", "xml"]),
     )
-    
+
     # Register custom filters
-    env.filters['dformat'] = delta_formatter
-    env.filters['round_delta'] = delta_formatter_round
-    env.filters['rst'] = rst_formatter
-    env.filters['dtformat'] = lambda dt, fmt: dt.strftime(fmt)
-    
+    env.filters["dformat"] = delta_formatter
+    env.filters["round_delta"] = delta_formatter_round
+    env.filters["rst"] = rst_formatter
+    env.filters["dtformat"] = lambda dt, fmt: dt.strftime(fmt)
+
     # Load and render template
     template = env.get_template(template_name)
     output = template.render(

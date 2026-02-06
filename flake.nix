@@ -2,7 +2,7 @@
   description = "Time tracking application";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
 
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -38,7 +38,7 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        python = pkgs.python312;
+        python = pkgs.python313;
 
         # Load the uv workspace & overlay
         workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
@@ -72,7 +72,10 @@
             buildSystemOverrides = {
               ibis.setuptools = [ ];
               pyyaml.setuptools = [ ];
+              markupsafe.setuptools = [ ];
               docutils.flit-core = [ ];
+              jinja2.flit-core = [ ];
+              packaging.flit-core = [ ];
             };
 
           in
